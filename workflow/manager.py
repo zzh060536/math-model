@@ -103,7 +103,12 @@ def call_claude(prompt: str, workdir: Path | None = None) -> str:
 
 def build_prompt(prompt_template: str, context: str, extra_vars: dict | None = None) -> str:
     """Build final prompt by substituting context and variables into template."""
-    prompt = prompt_template
+    skills_instruction = (
+        "【系统指令】你有权使用所有已安装的 Skills（技能）和 Tools（工具）。"
+        "请根据任务需要主动调用相关 Skill，例如数学建模、数据处理、可视化等技能。"
+        "任何可能相关的技能都应该被使用，不要只靠自己推理。\n\n"
+    )
+    prompt = skills_instruction + prompt_template
     prompt = prompt.replace("{{CONTEXT}}", context)
     prompt = prompt.replace("{{PROBLEM_FILE}}", str(PROJECT_DIR / "题目.pdf"))
     if extra_vars:

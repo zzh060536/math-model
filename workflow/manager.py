@@ -321,7 +321,14 @@ def main():
 
     print("=" * 60)
     print("  数学建模工作流管理器")
-    print(f"  当前进度: 阶段 {current_id}/7")
+    completed_count = sum(
+        1 for s in state.get("stages", {}).values()
+        if s.get("status") == "completed"
+    )
+    if completed_count > 0:
+        print(f"  [恢复] 已完成 {completed_count}/7 阶段，当前: 阶段 {current_id}")
+    else:
+        print(f"  [新任务] 从头开始，共 7 阶段")
     print("=" * 60)
 
     stage = get_stage_by_id(config, current_id)
@@ -330,6 +337,11 @@ def main():
         print("\n  所有阶段已完成!")
         print(f"  最终输出: output/submission/")
         return
+
+    # Warn if resuming an interrupted stage (will redo)
+    stage_info = state.get("stages", {}).get(str(current_id), {})
+    if stage_info.get("status") == "in_progress":
+        print(f"\n  [注意] 阶段 {current_id} 上次被中断，将重新执行")
 
     # Check for .docx templates before stage 6
     extra_vars = {}

@@ -83,6 +83,7 @@ def call_claude(prompt: str, workdir: Path | None = None) -> str:
         result = subprocess.run(
             ["claude", "--print", "--permission-mode", "bypassPermissions", prompt],
             capture_output=True,
+            stdin=subprocess.DEVNULL,
             text=True,
             cwd=cwd,
             encoding="utf-8",
@@ -289,7 +290,7 @@ def present_options(options_text: str) -> str:
 
     while True:
         choice = input("  请选择: ").strip().lower()
-        if choice in ("1", "n", ""):
+        if choice in ("1", "n"):
             return "next"
         if choice in ("2", "3", "4"):
             # Map number options to custom instruction

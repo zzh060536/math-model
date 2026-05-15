@@ -81,7 +81,7 @@ def call_claude(prompt: str, workdir: Path | None = None) -> str:
     cwd = str(workdir) if workdir else str(PROJECT_DIR)
     try:
         result = subprocess.run(
-            ["claude", "-p", prompt],
+            ["claude", "--print", "--permission-mode", "bypassPermissions", prompt],
             capture_output=True,
             text=True,
             cwd=cwd,

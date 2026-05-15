@@ -23,8 +23,19 @@
 重要要求：
 - 使用中文撰写（ctex 文档类或 xeCJK）
 - 数学公式使用 LaTeX 语法
-- 图表引用使用 \includegraphics
-- 引用前阶段生成的图表文件
+- 【强制】在结果分析章节中，务必使用 \includegraphics 插入前阶段生成的所有图表
+- 【强制】先用 Read 工具扫描 output/05-analysis/figures/ 目录，列出所有可用的图表文件
+- 【强制】每张图用一个 figure 环境，包含 \includegraphics、\caption 和 \label
+- 图表路径：\graphicspath{{../05-analysis/figures/}}，引用时只用文件名
+- 引用格式示例：
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=0.85\textwidth]{fig1_attack_ranking_comparison.png}
+      \caption{13种攻击动作的综合排序对比}
+      \label{fig:attack-ranking}
+  \end{figure}
+- 结果分析部分的文字必须围绕图表展开，不能脱离图表空洞论述
+- 所有已生成的图表（fig1-fig12）都应在正文中引用，至少插入6张关键图表
 - 参考文献格式规范
 - 论文总字数控制在合理范围内
 

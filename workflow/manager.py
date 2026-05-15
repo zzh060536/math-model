@@ -122,7 +122,7 @@ def call_claude(prompt: str, workdir: Path | None = None) -> str:
             text=True,
             cwd=cwd,
             encoding="utf-8",
-            timeout=600,
+            timeout=1800,
         )
         if result.returncode != 0:
             print(f"[WARN] claude exited with code {result.returncode}")
@@ -427,13 +427,38 @@ def run_workflow(interactive: bool = False, start_stage: int | None = None):
                         options_text = "[1] 继续下一阶段\n[2] 重新执行本阶段"
                     continue
         else:
-            # ── Auto mode: show options, auto-select [1] ──
-            print("\n" + "-" * 50)
-            print(options_text)
-            print("-" * 50)
-            print(f"  [自动] 已选择 [1] 继续下一阶段")
-            print(f"  [提示] 如需干预，用 --interactive 运行，或按 Ctrl+C 暂停")
-            print()
+            # ── Auto mode: show options, handle timeouts ──
+            is_timeout = ("Claude 返回空结果" in options_text or
+                          "无法自动分析" in options_text or
+                          "claude 执行超时" in options_text)
+
+            if is_timeout:
+                print("\n" + "-" * 50)
+                print(options_text)
+                print("-" * 50)
+                print(f"  [自动] Claude 超时，5秒后重试阶段 {current_id}...")
+                print()
+                import time
+                time.sleep(5)  # Brief pause before retry
+                options_text = execute_stage(stage, state, config, extra_vars)
+                is_timeout = ("Claude 返回空结果" in options_text or
+                              "无法自动分析" in options_text)
+
+            if is_timeout:
+                # Still failing — skip this stage
+                print("\n" + "-" * 50)
+                print(options_text)
+                print("-" * 50)
+                print(f"  [自动] 重试仍失败，跳过阶段 {current_id}，继续下一阶段")
+                print()
+            else:
+                # Normal success or retry succeeded
+                print("\n" + "-" * 50)
+                print(options_text)
+                print("-" * 50)
+                print(f"  [自动] 已选择 [1] 继续下一阶段")
+                print(f"  [提示] 如需干预，用 --interactive 运行，或按 Ctrl+C 暂停")
+                print()
 
         # Mark complete, advance
         state = mark_stage_complete(state, current_id, stage["output_file"])

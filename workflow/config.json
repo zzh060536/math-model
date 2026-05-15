@@ -1,0 +1,57 @@
+{
+  "stages": [
+    {
+      "id": 1,
+      "name": "题目分析与理解",
+      "prompt_file": "01-problem-understanding.txt",
+      "output_file": "output/01-problem-understanding.md",
+      "description": "提取关键信息，识别问题类型，拆分子问题"
+    },
+    {
+      "id": 2,
+      "name": "文献调研与方法选择",
+      "prompt_file": "02-method-selection.txt",
+      "output_file": "output/02-method-selection.md",
+      "description": "搜索相关方法，比较候选模型，推荐方法组合"
+    },
+    {
+      "id": 3,
+      "name": "模型假设与建立",
+      "prompt_file": "03-model-building.txt",
+      "output_file": "output/03-model-building.md",
+      "description": "提出假设，定义符号，推导公式，建立模型"
+    },
+    {
+      "id": 4,
+      "name": "编程求解",
+      "prompt_file": "04-code-solving.txt",
+      "output_file": "output/04-code/",
+      "description": "编写求解代码，运行并保存结果"
+    },
+    {
+      "id": 5,
+      "name": "结果分析与验证",
+      "prompt_file": "05-result-analysis.txt",
+      "output_file": "output/05-analysis/",
+      "description": "绘图，验证结果，灵敏度分析"
+    },
+    {
+      "id": 6,
+      "name": "论文撰写",
+      "prompt_file": "06-paper-writing.txt",
+      "output_file": "output/06-paper/",
+      "description": "按竞赛格式生成 LaTeX 论文"
+    },
+    {
+      "id": 7,
+      "name": "最终打包提交",
+      "prompt_file": "07-packaging.txt",
+      "output_file": "output/submission/",
+      "description": "整理文件结构，检查完整性，打包"
+    }
+  ],
+  "claude_command": "claude",
+  "problem_file": "题目.pdf",
+  "project_dir": ".",
+  "max_context_summary_chars": 3000
+}

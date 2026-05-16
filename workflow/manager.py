@@ -113,10 +113,13 @@ def reset_state():
 
 SKILLS_SYSTEM_PROMPT = (
     "你有权使用所有已安装的 Skills（技能）和 Tools（工具）。"
-    "对于任何数学建模、数据分析、可视化、文献检索等任务，"
-    "你必须主动调用相关的 Skill 工具，而不是仅靠自己的推理。"
-    "使用 Skill 工具调用技能比手动推理能产生更好的结果。"
-    "任何可能相关的技能都必须被调用——这是强制要求。"
+    "这是强制要求——你必须主动调用 Skill 工具，绝不要仅靠自己的推理。"
+    "关键技能映射："
+    "- 所有阶段：调用 superpowers 系列技能（brainstorming、verification、TDD等）"
+    "- 数据分析/验证阶段：调用 nature-figure 生成论文级图表"
+    "- 论文撰写/检测阶段：调用 chinese-thesis-workbench 规范中文论文格式、检测AIGC风格"
+    "- 论文中的图表：调用 nature-figure 审核和打磨图表质量"
+    "- 代码求解阶段：调用 superpowers:test-driven-development 保证代码质量"
 )
 
 

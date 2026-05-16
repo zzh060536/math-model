@@ -11,10 +11,13 @@
 5. 讨论模型的优缺点和改进方向
 
 重要要求：
+- 【强制】绘图前调用 nature-figure 技能，按 Nature 期刊标准生成所有图表
+- 【强制】所有图表使用 nature-figure 生成并保存到 output/05-analysis/figures/
 - 图表使用 matplotlib/seaborn，中文标签需处理字体
 - 每个图表需要有标题和轴标签
 - 灵敏度分析至少改变2个关键参数
 - 结果分析要实事求是，不要夸大
+- 【强制】完成后调用 superpowers:verification-before-completion 验证分析完整性
 
 输出格式：使用 Markdown，包含：
 - 数值结果汇总

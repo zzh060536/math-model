@@ -4,12 +4,13 @@
 {{CONTEXT}}
 
 任务：
-1. 检查所有输出文件的完整性
-2. 整理文件结构到 output/submission/ 目录
-3. 复制最终论文 PDF（如有）到 submission/
-4. 复制关键代码到 submission/code/
-5. 复制图表到 submission/figures/
-6. 生成 README 说明文件
-7. 生成提交文件清单
+1. 【强制】先调用 chinese-thesis-workbench 技能，对论文做最终检查（格式、AIGC风格、完整性）
+2. 检查所有输出文件的完整性
+3. 整理文件结构到 output/submission/ 目录
+4. 复制最终论文 PDF（如有）到 submission/
+5. 复制关键代码到 submission/code/
+6. 复制图表到 submission/figures/
+7. 生成 README 说明文件
+8. 生成提交文件清单
 
 输出：列出 submission/ 目录中的所有文件，并给出提交建议。

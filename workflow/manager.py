@@ -111,12 +111,29 @@ def reset_state():
 
 # ── Claude CLI ────────────────────────────────────────────────
 
-def call_claude(prompt: str, workdir: Path | None = None) -> str:
-    """Invoke claude CLI; returns stdout."""
+SKILLS_SYSTEM_PROMPT = (
+    "你有权使用所有已安装的 Skills（技能）和 Tools（工具）。"
+    "对于任何数学建模、数据分析、可视化、文献检索等任务，"
+    "你必须主动调用相关的 Skill 工具，而不是仅靠自己的推理。"
+    "使用 Skill 工具调用技能比手动推理能产生更好的结果。"
+    "任何可能相关的技能都必须被调用——这是强制要求。"
+)
+
+
+def call_claude(prompt: str, workdir: Path | None = None, system_prompt: str = "") -> str:
+    """Invoke claude CLI; returns stdout.
+
+    If system_prompt is given, it's appended to the system prompt via
+    --append-system-prompt, which is stronger than prompting.
+    """
     cwd = str(workdir) if workdir else str(PROJECT_DIR)
+    cmd = ["claude", "--print", "--permission-mode", "bypassPermissions"]
+    if system_prompt:
+        cmd.extend(["--append-system-prompt", system_prompt])
+    cmd.append(prompt)
     try:
         result = subprocess.run(
-            ["claude", "--print", "--permission-mode", "bypassPermissions", prompt],
+            cmd,
             capture_output=True,
             stdin=subprocess.DEVNULL,
             text=True,
@@ -138,12 +155,7 @@ def call_claude(prompt: str, workdir: Path | None = None) -> str:
 
 
 def build_prompt(prompt_template: str, context: str, extra_vars: dict | None = None) -> str:
-    skills_instruction = (
-        "【系统指令】你有权使用所有已安装的 Skills（技能）和 Tools（工具）。"
-        "请根据任务需要主动调用相关 Skill，例如数学建模、数据处理、可视化等技能。"
-        "任何可能相关的技能都应该被使用，不要只靠自己推理。\n\n"
-    )
-    prompt = skills_instruction + prompt_template
+    prompt = prompt_template
     prompt = prompt.replace("{{CONTEXT}}", context)
     prompt = prompt.replace("{{PROBLEM_FILE}}", str(PROJECT_DIR / "题目.pdf"))
     if extra_vars:
@@ -237,7 +249,7 @@ def execute_stage(stage: dict, state: dict, config: dict, extra_vars: dict | Non
     print(f"{'='*50}")
     print(f"  正在执行... (调用 Claude Code，可能需要数分钟)\n")
 
-    output = call_claude(prompt)
+    output = call_claude(prompt, system_prompt=SKILLS_SYSTEM_PROMPT)
     if _abort_requested:
         return ""
 
@@ -263,7 +275,7 @@ def execute_stage(stage: dict, state: dict, config: dict, extra_vars: dict | Non
 [3] <具体修改建议2>（如有必要）
 
 每个选项一行，以 [数字] 开头。如果没有需要修改的，只列 [1]。"""
-    options_output = call_claude(options_prompt)
+    options_output = call_claude(options_prompt, system_prompt=SKILLS_SYSTEM_PROMPT)
     if _abort_requested:
         return ""
 
@@ -417,11 +429,12 @@ def run_workflow(interactive: bool = False, start_stage: int | None = None):
                         f"请基于意见重新完成阶段 {current_id}「{stage['name']}」。\n"
                         f"原始任务：\n{base_prompt}"
                     )
-                    output = call_claude(revised_prompt)
+                    output = call_claude(revised_prompt, system_prompt=SKILLS_SYSTEM_PROMPT)
                     save_output(stage["output_file"], output)
                     options_text = call_claude(
                         f"重新完成了阶段{current_id}（按用户意见：{instruction}）。"
-                        "请分析新输出并给出选项，格式同之前。"
+                        "请分析新输出并给出选项，格式同之前。",
+                        system_prompt=SKILLS_SYSTEM_PROMPT,
                     )
                     if not options_text.strip():
                         options_text = "[1] 继续下一阶段\n[2] 重新执行本阶段"

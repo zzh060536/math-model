@@ -13,6 +13,12 @@ import sys
 import os
 import signal
 import argparse
+
+# Fix Windows GBK encoding issues with Unicode output
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 from pathlib import Path
 from datetime import datetime
 
@@ -114,12 +120,12 @@ def reset_state():
 SKILLS_SYSTEM_PROMPT = (
     "你有权使用所有已安装的 Skills（技能）和 Tools（工具）。"
     "这是强制要求——你必须主动调用 Skill 工具，绝不要仅靠自己的推理。"
-    "关键技能映射："
-    "- 所有阶段：调用 superpowers 系列技能（brainstorming、verification、TDD等）"
-    "- 数据分析/验证阶段：调用 nature-figure 生成论文级图表"
-    "- 论文撰写/检测阶段：调用 chinese-thesis-workbench 规范中文论文格式、检测AIGC风格"
-    "- 论文中的图表：调用 nature-figure 审核和打磨图表质量"
-    "- 代码求解阶段：调用 superpowers:test-driven-development 保证代码质量"
+    "由于运行在自动化模式（无用户交互），请遵守以下规则："
+    "- 跳过任何需要用户输入/选择的技能（如 brainstorming），用自己推理替代"
+    "- 数据可视化：调用 nature-figure 生成论文级图表"
+    "- 论文撰写/检测：调用 chinese-thesis-workbench 规范中文论文"
+    "- 代码求解：调用 superpowers:test-driven-development 保证质量"
+    "- 完成后：调用 superpowers:verification-before-completion 验证"
 )
 
 

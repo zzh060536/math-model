@@ -1,3 +1,3 @@
-可以自动完成数模任务的可视化网页
-拖入题目就可以调用cli自动完成多subagent的提问，并可视化各阶段输出内容
+可以自动完成数模任务的可视化网页  
+拖入题目就可以调用cli自动完成多subagent的提问，并可视化各阶段输出内容  
 配置的skills:nature-skills,superpowers,chinese-thesis-workbench

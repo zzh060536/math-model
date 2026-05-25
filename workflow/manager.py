@@ -24,8 +24,12 @@ from datetime import datetime
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
-STATE_PATH = PROJECT_DIR / "state.json"
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
+
+# These are set by command-line args (--project / --project-dir)
+_state_path = PROJECT_DIR / "state.json"
+_project_dir = PROJECT_DIR
+_project_name = ""
 
 # Global flag for graceful Ctrl+C handling
 _abort_requested = False
@@ -68,7 +72,7 @@ def load_config() -> dict:
 
 
 def load_state() -> dict:
-    state = load_json(STATE_PATH)
+    state = load_json(_state_path)
     if not state:
         state = {
             "current_stage": 1,
@@ -80,7 +84,7 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     state["updated_at"] = datetime.now().isoformat()
-    save_json(STATE_PATH, state)
+    save_json(_state_path, state)
 
 
 def mark_stage_complete(state: dict, stage_id: int, output_path: str) -> dict:
@@ -110,14 +114,14 @@ def get_stage_by_id(config: dict, stage_id: int) -> dict | None:
 
 def reset_state():
     """Reset all progress."""
-    if STATE_PATH.exists():
-        STATE_PATH.unlink()
+    if _state_path.exists():
+        _state_path.unlink()
     print("  进度已重置")
 
 
-# ── Claude CLI ────────────────────────────────────────────────
+# ── Agent CLI (Claude Code / Codex CLI) ─────────────────────────
 
-SKILLS_SYSTEM_PROMPT = (
+CLAUDE_SYSTEM_PROMPT = (
     "你有权使用所有已安装的 Skills（技能）和 Tools（工具）。"
     "这是强制要求——你必须主动调用 Skill 工具，绝不要仅靠自己的推理。"
     "由于运行在自动化模式（无用户交互），请遵守以下规则："
@@ -128,18 +132,51 @@ SKILLS_SYSTEM_PROMPT = (
     "- 完成后：调用 superpowers:verification-before-completion 验证"
 )
 
+CODEX_INSTRUCTIONS = (
+    "你在自动化模式（无用户交互）下运行。请遵守以下规则：\n"
+    "- 直接完成所有任务，不要等待用户确认\n"
+    "- 跳过需要用户输入的步骤，用最佳判断替代\n"
+    "- 数学建模中各阶段严格按任务要求执行\n"
+    "- 每阶段完成后生成完整的输出文件\n"
+    "- 写入文件前先创建必要的目录\n"
+)
 
-def call_claude(prompt: str, workdir: Path | None = None, system_prompt: str = "") -> str:
-    """Invoke claude CLI; returns stdout.
 
-    If system_prompt is given, it's appended to the system prompt via
-    --append-system-prompt, which is stronger than prompting.
+def _get_agent_config(config: dict) -> dict:
+    agent_cfg = config.get("agent", {})
+    provider = agent_cfg.get("provider", "claude")
+    if provider not in ("claude", "codex"):
+        print(f"[WARN] Unknown agent provider '{provider}', falling back to claude")
+        provider = "claude"
+    return agent_cfg.get(provider, {}), provider
+
+
+def call_agent(prompt: str, workdir: Path | None = None, system_prompt: str = "") -> str:
+    """Invoke the configured agent CLI (Claude Code or Codex CLI).
+
+    Reads config.json → agent.provider to decide which CLI to use.
+    System prompt: for Claude, uses --append-system-prompt flag;
+    for Codex, inlines it into the prompt.
     """
+    config = load_config()
+    agent_cfg, provider = _get_agent_config(config)
     cwd = str(workdir) if workdir else str(PROJECT_DIR)
-    cmd = ["claude", "--print", "--permission-mode", "bypassPermissions"]
-    if system_prompt:
-        cmd.extend(["--append-system-prompt", system_prompt])
-    cmd.append(prompt)
+    cli = agent_cfg.get("command", "claude" if provider == "claude" else "codex")
+    args = list(agent_cfg.get("args", []))
+
+    if provider == "claude":
+        if system_prompt:
+            args.extend(["--append-system-prompt", system_prompt])
+        args.append(prompt)
+    else:
+        # Codex: inline system instructions into the prompt
+        full_prompt = CODEX_INSTRUCTIONS
+        if system_prompt:
+            full_prompt += "\n\n=== 额外指令 ===\n" + system_prompt
+        full_prompt += "\n\n=== 任务 ===\n" + prompt
+        args.append(full_prompt)
+
+    cmd = [cli] + args
     try:
         result = subprocess.run(
             cmd,
@@ -151,22 +188,27 @@ def call_claude(prompt: str, workdir: Path | None = None, system_prompt: str = "
             timeout=1800,
         )
         if result.returncode != 0:
-            print(f"[WARN] claude exited with code {result.returncode}")
+            print(f"[WARN] {cli} exited with code {result.returncode}")
             if result.stderr:
                 print(f"[WARN] stderr: {result.stderr[:500]}")
         return result.stdout
     except subprocess.TimeoutExpired:
-        print("[ERROR] claude 执行超时（600秒）")
+        print(f"[ERROR] {cli} 执行超时（1800秒）")
         return ""
     except FileNotFoundError:
-        print("[ERROR] 未找到 claude 命令，请确认 Claude Code 已安装并在 PATH 中")
+        print(f"[ERROR] 未找到 {cli} 命令。请先安装并确保在 PATH 中")
+        print(f"  Claude Code: https://docs.anthropic.com/en/docs/claude-code/overview")
+        print(f"  Codex CLI:   npm install -g @openai/codex")
         sys.exit(1)
 
 
 def build_prompt(prompt_template: str, context: str, extra_vars: dict | None = None) -> str:
     prompt = prompt_template
     prompt = prompt.replace("{{CONTEXT}}", context)
-    prompt = prompt.replace("{{PROBLEM_FILE}}", str(PROJECT_DIR / "题目.pdf"))
+    problem = (_project_dir / "题目.pdf")
+    if not problem.exists():
+        problem = (PROJECT_DIR / "题目.txt")
+    prompt = prompt.replace("{{PROBLEM_FILE}}", str(problem))
     if extra_vars:
         for key, val in extra_vars.items():
             prompt = prompt.replace("{{" + key + "}}", str(val))
@@ -176,7 +218,7 @@ def build_prompt(prompt_template: str, context: str, extra_vars: dict | None = N
 # ── Output & Context ──────────────────────────────────────────
 
 def save_output(output_path: str, content: str) -> None:
-    full_path = PROJECT_DIR / output_path
+    full_path = _project_dir / output_path
     if output_path.endswith("/") or output_path.endswith("\\"):
         full_path.mkdir(parents=True, exist_ok=True)
         file_path = full_path / "stage-output.md"
@@ -200,7 +242,7 @@ def collect_context_summary(state: dict, config: dict) -> str:
         if stage_info.get("status") != "completed":
             continue
         output = stage_info.get("output", "")
-        output_path = PROJECT_DIR / output
+        output_path = _project_dir / output
         if output_path.is_file() and output_path.exists():
             content = output_path.read_text(encoding="utf-8")
             header = f"\n\n=== 阶段 {sid}: {stage_cfg.get('name', '')} 输出 ===\n"
@@ -217,7 +259,7 @@ def collect_context_summary(state: dict, config: dict) -> str:
 
 def read_docx_templates() -> str:
     docx_files = []
-    for scan_dir in [PROJECT_DIR / "output", PROJECT_DIR]:
+    for scan_dir in [_project_dir / "output", _project_dir]:
         if scan_dir.exists():
             docx_files.extend(scan_dir.glob("*.docx"))
     if not docx_files:
@@ -258,7 +300,7 @@ def execute_stage(stage: dict, state: dict, config: dict, extra_vars: dict | Non
     print(f"{'='*50}")
     print(f"  正在执行... (调用 Claude Code，可能需要数分钟)\n")
 
-    output = call_claude(prompt, system_prompt=SKILLS_SYSTEM_PROMPT)
+    output = call_agent(prompt, system_prompt=CLAUDE_SYSTEM_PROMPT)
     if _abort_requested:
         return ""
 
@@ -284,7 +326,7 @@ def execute_stage(stage: dict, state: dict, config: dict, extra_vars: dict | Non
 [3] <具体修改建议2>（如有必要）
 
 每个选项一行，以 [数字] 开头。如果没有需要修改的，只列 [1]。"""
-    options_output = call_claude(options_prompt, system_prompt=SKILLS_SYSTEM_PROMPT)
+    options_output = call_agent(options_prompt, system_prompt=CLAUDE_SYSTEM_PROMPT)
     if _abort_requested:
         return ""
 
@@ -438,12 +480,12 @@ def run_workflow(interactive: bool = False, start_stage: int | None = None):
                         f"请基于意见重新完成阶段 {current_id}「{stage['name']}」。\n"
                         f"原始任务：\n{base_prompt}"
                     )
-                    output = call_claude(revised_prompt, system_prompt=SKILLS_SYSTEM_PROMPT)
+                    output = call_agent(revised_prompt, system_prompt=CLAUDE_SYSTEM_PROMPT)
                     save_output(stage["output_file"], output)
-                    options_text = call_claude(
+                    options_text = call_agent(
                         f"重新完成了阶段{current_id}（按用户意见：{instruction}）。"
                         "请分析新输出并给出选项，格式同之前。",
-                        system_prompt=SKILLS_SYSTEM_PROMPT,
+                        system_prompt=CLAUDE_SYSTEM_PROMPT,
                     )
                     if not options_text.strip():
                         options_text = "[1] 继续下一阶段\n[2] 重新执行本阶段"
@@ -497,7 +539,7 @@ def run_workflow(interactive: bool = False, start_stage: int | None = None):
     save_state(state)
     print("\n" + "=" * 60)
     print("  全部 7 个阶段已完成!")
-    print(f"  最终输出: output/submission/")
+    print(f"  最终输出: {_project_dir / 'output' / 'submission'}")
     print("=" * 60)
 
 
@@ -523,7 +565,29 @@ def main():
         action="store_true",
         help="重置所有进度，从头开始"
     )
+    parser.add_argument(
+        "--project",
+        type=str,
+        default="",
+        help="项目名称（多项目隔离）"
+    )
+    parser.add_argument(
+        "--project-dir",
+        type=str,
+        default="",
+        help="项目目录路径"
+    )
     args = parser.parse_args()
+
+    global _project_dir, _state_path, _project_name
+    if args.project_dir:
+        _project_dir = Path(args.project_dir)
+        _project_name = args.project or _project_dir.name
+    elif args.project:
+        _project_dir = PROJECT_DIR / "projects" / args.project
+        _project_name = args.project
+    _state_path = _project_dir / "state.json"
+    _project_dir.mkdir(parents=True, exist_ok=True)
 
     if args.reset:
         reset_state()

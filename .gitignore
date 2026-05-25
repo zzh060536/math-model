@@ -3,3 +3,20 @@ state.json
 __pycache__/
 *.pyc
 .superpowers/
+
+# 密钥和配置
+.claude/
+analyze_ui.py
+mcp_zhipu_vision.py
+
+# 项目数据（用户题目和输出）
+projects/
+
+# 临时文件
+output.zip
+*.docx
+*.png
+*.jpg
+*.jpeg
+屏幕截图*
+题目.*

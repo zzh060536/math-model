@@ -50,7 +50,25 @@
       "description": "整理文件结构，检查完整性，打包"
     }
   ],
-  "claude_command": "claude",
+  "agent": {
+    "provider": "codex",
+    "claude": {
+      "command": "claude",
+      "args": [
+        "--print",
+        "--permission-mode",
+        "bypassPermissions"
+      ]
+    },
+    "codex": {
+      "command": "codex",
+      "args": [
+        "exec",
+        "--approval-mode",
+        "full-auto"
+      ]
+    }
+  },
   "problem_file": "题目.pdf",
   "project_dir": ".",
   "max_context_summary_chars": 3000
